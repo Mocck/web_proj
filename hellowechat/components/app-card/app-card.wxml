@@ -1,0 +1,30 @@
+<view class="card app-card" hover-class="card-hover" role="button" aria-label="{{item.name}}">
+  <view class="row">
+    <image class="avatar" src="{{item.avatar}}" mode="aspectFill" />
+    <view class="info">
+      <view class="title-row">
+        <text class="title">{{item.name}}</text>
+        <text class="price {{item.price==0?'free':'paid'}}">{{ item.price==0 ? '免费' : '¥'+item.price }}</text>
+      </view>
+
+      <text class="desc line-2">{{item.description}}</text>
+
+      <view class="meta">
+        <!-- 注意：显式命名循环变量，避免与组件的 item 冲突 -->
+        <view class="rate">
+          <block wx:for="{{stars}}" wx:key="*this" wx:for-index="idx" wx:for-item="d">
+            <text class="star {{ idx < starsOn ? 'on' : '' }}">★</text>
+          </block>
+          <text class="score">{{scoreText}}</text>
+        </view>
+
+        <text class="stat">⬇️ {{item.downloads}}</text>
+        <text class="stat">💬 {{item.reviews}}</text>
+      </view>
+
+      <view class="tags">
+        <text class="tag" wx:for="{{item.tags}}" wx:key="*this">{{item}}</text>
+      </view>
+    </view>
+  </view>
+</view>

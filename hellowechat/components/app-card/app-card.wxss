@@ -1,0 +1,32 @@
+/* 变量：仅组件内使用，避免全局污染（如需更统一，可迁到 app.wxss） */
+:root { --muted:#64748b; --border:#e2e8f0; }
+
+.app-card { padding: 20rpx; margin: 0 24rpx 24rpx; }
+.card {
+  background:#fff; border:1px solid var(--border); border-radius:24rpx;
+  box-shadow:0 2rpx 0 rgba(0,0,0,0.02); transition:transform .2s, box-shadow .2s;
+}
+.card-hover { transform: translateY(-2rpx); box-shadow: 0 12rpx 24rpx rgba(0,0,0,0.06); }
+
+.row { display:flex; gap: 20rpx; }
+.avatar { width:112rpx; height:112rpx; border-radius:16rpx; border:1px solid var(--border); }
+.info { flex:1; min-width:0; }
+
+.title-row{ display:flex; align-items:center; justify-content:space-between; gap:12rpx; }
+.title { font-weight:600; color:#0f172a; max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.price { font-size:22rpx; padding:4rpx 12rpx; border-radius:24rpx; border:1px solid transparent; }
+.price.free { background:#ecfdf5; color:#047857; border-color:#d1fae5; }
+.price.paid { background:#fffbeb; color:#b45309; border-color:#fde68a; }
+
+.desc { margin-top:8rpx; font-size:24rpx; color:var(--muted); }
+
+/* 组件内定义两行省略，独立于全局 */
+.line-2 { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+
+.meta { margin-top:12rpx; display:flex; gap:24rpx; align-items:center; flex-wrap:wrap; color:#64748b; font-size:22rpx; }
+.star { color:#e5e7eb; font-size:26rpx; }
+.star.on { color:#f59e0b; }
+.score { margin-left:6rpx; }
+
+.tags { margin-top:12rpx; display:flex; gap:10rpx; flex-wrap:wrap; }
+.tag { font-size:20rpx; padding:6rpx 12rpx; border-radius:999rpx; color:#334155; background:#f1f5f9; border:1px solid #e2e8f0; }

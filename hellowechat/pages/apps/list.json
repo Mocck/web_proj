@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "智能体应用列表",
+  "usingComponents": {
+    "app-card": "/components/app-card/app-card"
+  },
+  "enablePullDownRefresh": true
+}

@@ -1,0 +1,38 @@
+<view class="page">
+  <!-- 顶部：标题 + mock/后端切换 -->
+  <view class="header">
+    <view class="title-wrap">
+      <text class="h2">智能体应用列表</text>
+      <text class="sub">单列卡片列表，轻量展示</text>
+    </view>
+    <view class="toggle">
+      <text class="toggle-label">使用本地模拟数据</text>
+      <switch checked="{{useMock}}" bindchange="onToggleMock" />
+    </view>
+  </view>
+
+  <!-- 加载态：骨架卡片（不依赖全局 .card 样式） -->
+  <block wx:if="{{loading}}">
+    <block wx:for="{{skeleton}}" wx:key="*this">
+      <view class="skel-card"></view>
+    </block>
+  </block>
+
+  <!-- 错误态 -->
+  <view wx:elif="{{error}}" class="status">
+    <text class="err">🙈 {{error}}</text>
+    <button type="primary" bindtap="loadData">重试</button>
+  </view>
+
+  <!-- 空态 -->
+  <view wx:elif="{{list.length===0}}" class="status">
+    <text class="muted">暂无应用</text>
+  </view>
+
+  <!-- 数据态：单列 -->
+  <block wx:else>
+    <block wx:for="{{list}}" wx:key="id">
+      <app-card item="{{item}}"></app-card>
+    </block>
+  </block>
+</view>
