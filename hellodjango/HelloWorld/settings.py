@@ -32,6 +32,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'agents',
+    'graph',
+    'workspace',
 ]
 
 MIDDLEWARE = [
@@ -71,11 +73,11 @@ WSGI_APPLICATION = 'HelloWorld.wsgi.application'
 DATABASES = {
      'default': {
         'ENGINE': 'django.db.backends.mysql',   # 使用 MySQL
-        'NAME': 'demo_db',                    # 你的数据库名
+        'NAME': 'demo_db',                      # 你的数据库名
         'USER': 'demo_user',                    # 数据库用户名
         'PASSWORD': 'demo_pass_123',            # 数据库密码
         'HOST': 'localhost',                    # 本地就用这个
-        'PORT': '3306',                          # MySQL 默认端口
+        'PORT': '3306',                         # MySQL 默认端口
         'OPTIONS': {
             'charset': 'utf8mb4',
         }

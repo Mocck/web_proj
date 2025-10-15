@@ -35,7 +35,8 @@ def custom_exception_handler(exc, context):
 
     '''# ✅ 打印堆栈，方便排查 50000 错误
     traceback.print_exc()
-    logger.exception("Unhandled exception in DRF:")'''
+    logger.exception("Unhandled exception in DRF:")
+    '''
 
     return Response(ApiResponse.fail(50000, "服务器异常，请稍后再试").dict(), status=500)
 
