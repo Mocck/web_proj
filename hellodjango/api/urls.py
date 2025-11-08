@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 urlpatterns = [
@@ -6,4 +6,8 @@ urlpatterns = [
     path("apps/", views.apps),
     path("graph/", views.graph),
     path("workspace/", views.space),
+    # 用户管理系统
+    path('users/', include('user_management.urls')),
+    # 聊天对话系统
+    path('chat/', include('chat.urls')),
 ]

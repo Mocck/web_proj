@@ -1,28 +1,27 @@
-from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .common.response import ApiResponse
 from .common.handlers import BusinessException
-from datetime import date
-from decimal import Decimal
 from agents.models import Agent
 from graph.models import Graph
 from workspace.models import WorkSpace
-from .serializer import AgentSerializer, GraphSerializer, WorkSpaceSerializer
+from .serializer import* 
 
 from asgiref.sync import sync_to_async
 
+# 测试 /api 连通性
+@api_view(['GET'])  
+def ping(request):
+    return Response(ApiResponse.ok({"msg": "pong"}))
+
+# 把Mysql读取从同步改为异步
 @sync_to_async
 def get_data(mymodel):
     return list(mymodel.objects.all())
 
-@api_view(['GET'])  
-def ping(request):
-    return Response(ApiResponse.ok({"msg": "pong"}).dict())
-
-
+# 获取 app list
 async def apps(request):
     rows = await get_data(Agent)  # ORM 查询所有数据
     serializer = AgentSerializer(rows, many=True) # 把 QuerySet 直接作为 instance
@@ -46,3 +45,7 @@ def space(request):
     rows = WorkSpace.objects.all()
     serializer = WorkSpaceSerializer(rows, many=True) # 把 QuerySet 直接作为 instance
     return Response(serializer.data)
+
+
+
+

@@ -88,11 +88,14 @@ The *--reload* flag tells Uvicorn to watch your files for changes and reload if 
 |2️⃣ 异步上下文管理器	|async with ...:|	用于管理异步资源（如连接池、网络会话），支持 __aenter__() / __aexit__() 异步方法|
 |3️⃣ 异步迭代器	|async for ... in ...:	|用于异步遍历（如逐条读取网络数据流、数据库游标等）|
 
+
 # ✅ 三、asyncio 核心机制
 
 ## 1️⃣ 协程（Coroutine）= 可暂停和恢复执行的函数。
 
-用 async def 定义的函数。返回一个 协程对象，不是立即执行。
+用 async def 定义的函数。返回一个 协程对象，**不是立即执行**。
+
+如果要执行，必须将协程对象交给事件循环来处理。
 
 ```python
 async def foo():
@@ -114,11 +117,19 @@ await asyncio.sleep(2)
 
 不会阻塞整个线程，它只把当前协程的控制权还给事件循环；事件循环会调度其他协程继续运行；2 秒后再回来恢复执行。
 
-## 3️⃣ 事件循环（Event Loop）asyncio 的核心调度器；
+await 后面只能加可等待对象：
+- 协程对象
+- task对象
+- asyncio.future对象
+
+
+## 3️⃣ 事件循环（Event Loop）：asyncio 的核心调度器
 
 负责：
 
-运行协程；管理任务的挂起与恢复；响应 I/O 事件（socket、网络等）。
+- 运行协程；
+- 管理任务的挂起与恢复；
+- 响应 I/O 事件（socket、网络等）。
 
 ```python
 import asyncio
@@ -136,9 +147,13 @@ async def main():
 asyncio.run(main())
 ```
 
-asyncio.run() 创建一个 事件循环（event loop）；将 main() 这个协程对象封装
+``asyncio.run()`` 作用：
 
-成一个 主Task；把它放进事件循环中运行。
+- 创建一个 事件循环（event loop）；
+
+- 将 ``main()`` 这个协程对象封装成一个 主Task；
+
+- 把它放进事件循环中运行。
 
 #### 事件循环的行为：
 
@@ -147,6 +162,61 @@ asyncio.run() 创建一个 事件循环（event loop）；将 main() 这个协�
 - t=1: hello 输出，world 继续等待
 
 - t=2: world 输出，全部完成
+
+事件循环的功能可以被看作如下伪代码
+```python
+task = [main, say, say, ...]
+
+while True:
+    executable, done = findtask()
+
+    for ready in executable:
+        ready.run()
+
+    for don in done:
+        task.remove(don)
+    
+    if task == None:
+        break
+```
+```python
+async def task():
+    pass
+
+# old fashion style
+
+# 生成或者获取一个事件循环
+loop = asyncio.get_event_loop()
+# 将任务task 放到任务列表
+loop.run_until_complete(task)
+
+# 等价于 new style Python 3.7+
+asyncio.run( task() )
+```
+
+### uvloop
+
+**python原生event_loop的一个高效替代。**
+
+```bash
+pip install uvloop
+```
+
+```python
+import asyncio
+import uvloop
+
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+# async def as usual....
+
+# async run() 自动使用uvloop
+asyncio.run(...)
+```
+
+#### 在asgi->uvicorn 内部就是使用了 uvloop
+
+
 
 ## 4️⃣ Task（任务）
 
@@ -218,6 +288,104 @@ asyncio.run(main())
 
 - Django 异步 view 在 await I/O（如数据库/HTTP 请求）时让出执行权；其他请求得以并发执行。
 
+
+# 异步上下文管理器：
+
+## 🧩 什么是上下文管理器（Context Manager）
+
+上下文管理器是一个定义了特定方法的对象，用来**在代码块执行前后自动执行资源管理逻辑。**
+
+最常见的例子：
+```python
+with open("file.txt", "r") as f:
+    data = f.read()
+```
+
+这里 ``open()`` 返回的文件对象 f 就是一个上下文管理器。
+
+进入 with 代码块前，会自动调用它的 ``__enter__()``；退出时无论是否异常，都会调用 ``__exit__()`` 来清理资源。
+
+## 🧠 上下文管理协议（同步版）
+
+实现上下文管理器需要实现两个魔术方法 __enter__() and __exit__()：
+```python
+class MyContext:
+    def __enter__(self):
+        print("进入上下文")
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        print("离开上下文")
+        # 返回 True 可以抑制异常，否则异常会向外传播
+        return False
+
+with MyContext() as obj:
+    print("在上下文中")
+```
+
+## 🧪 常见用途
+
+| 场景     | 上下文管理器                             |
+| ------ | ---------------------------------- |
+| 文件操作   | `open()` 自动关闭文件                    |
+| 数据库连接  | `with connection.cursor() as cur:` |
+| 线程/锁   | `with threading.Lock():`           |
+| 资源清理   | 自动释放网络连接、关闭 socket                 |
+| 临时状态更改 | 改环境变量、日志级别、浮点精度                    |
+
+当你在异步编程中（asyncio）需要管理异步资源（比如异步数据库连接、网络请求、文件IO）时，就需要 异步上下文管理器。
+
+
+## 异步上下文管理器的实现
+
+``__aenter__()`` and ``__aexit__()``
+```python
+import asyncio
+
+class AsyncExample:
+    async def __aenter__(self):
+        print("异步进入")
+        await asyncio.sleep(1)
+        # 打开一个数据库连接并返回
+        return "资源"
+
+    async def __aexit__(self, exc_type, exc, tb):
+        print("异步退出")
+        await asyncio.sleep(1)
+        # 关闭数据库连接
+
+async def main():
+    async with AsyncExample() as res:
+        print("使用", res)
+
+asyncio.run(main())
+```
+
+## 🧩 异步上下文管理器的应用场景
+
+| 场景      | 库                                     | 说明        |
+| ------- | ------------------------------------- | --------- |
+| 异步数据库连接 | `aiomysql`, `asyncpg`, `databases`    | 自动打开/关闭连接 |
+| 异步文件    | `aiofiles.open()`                     | 异步读写文件    |
+| 异步HTTP  | `aiohttp.ClientSession()`             | 自动关闭连接池   |
+| 异步锁     | `asyncio.Lock()`                      | 异步任务互斥    |
+| 异步事务    | 异步ORM（Tortoise ORM, SQLAlchemy async） | 自动提交/回滚事务 |
+
+### example:
+```python
+import aiohttp
+import asyncio
+
+async def main():
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://example.com") as resp:
+            text = await resp.text()
+            print(text[:100])
+
+asyncio.run(main())
+```
+同样，``async with`` 也必须在协程中使用
+
 # 四、并发执行多个协程
 
 在 asyncio 中，一个事件循环（event loop）可以同时调度多个协程（coroutine）执行。
@@ -275,7 +443,6 @@ async def my_view(request):
     return JsonResponse({"github": data1, "python": data2})
 ```
 
-# 五、 others
 | 特性     | async for        | await asyncio.gather()     |
 | ------ | ---------------- | -------------------------- |
 | 执行顺序   | 顺序               | 并发                         |
@@ -284,11 +451,212 @@ async def my_view(request):
 | 使用场景   | 异步生成器、按顺序处理数据流   | 并发处理多个独立任务                 |
 
 
-✅ 三、确认你没有混用 sync 和 async 逻辑
+# 五、asyncio.Future 和 concurrent.futures.Future
+
+- asyncio.Future
+
+👉 是 协程世界的“占位符”。
+
+表示“某个异步操作的结果还没准备好，但未来会有”。
+
+通常由事件循环（event loop）调度。
+
+只有协程或异步回调才能完成（set_result）。
+
+- concurrent.futures.Future
+
+👉 是 线程或进程执行结果的占位符。
+
+当你用 ThreadPoolExecutor 或 ProcessPoolExecutor 提交任务时，返回的就是这个。
+
+它代表某个任务在线程/进程中运行的结果。
+
+由线程池管理，不属于 asyncio 事件循环。
+
+| 特性          | `asyncio.Future`      | `concurrent.futures.Future`              |
+| ----------- | --------------------- | ---------------------------------------- |
+| 所属模块        | `asyncio`（协程模型）       | `concurrent.futures`（线程/进程池模型）           |
+| 谁管理执行       | 事件循环（event loop）      | 线程池或进程池                                  |
+| 谁设置结果       | 通常由 `asyncio` 内部协程    | 线程或进程执行完后自动设置                            |
+| 可 `await` 吗 | ✅ 可以直接 `await future` | ❌ 不能直接 `await`（要用 `asyncio.wrap_future`） |
+| 使用场景        | 异步 IO、协程              | CPU 密集型任务、多线程/多进程                        |
+| 执行环境        | 单线程事件循环               | 多线程 / 多进程执行                              |
+
+
+### 🔁 它们能不能混用？
+
+可以，但要通过桥接函数。在 Django、FastAPI、或异步框架中，你想在异步函数中调用阻塞代码。
+
+比如你在 asyncio 事件循环中想等待一个线程池任务的结果，需要这样：
+
+```python
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+# 这是一个阻塞任务，且不支持直接用异步
+def blocking_task():
+    return "done from thread!"
+
+async def main():
+    # 获取当前事件循环
+    loop = asyncio.get_running_loop()
+
+    with ThreadPoolExecutor() as pool:
+        # 把 concurrent.futures.Future 转成 asyncio.Future
+        result = await loop.run_in_executor(pool, blocking_task)
+        print(result)
+
+asyncio.run(main())
+```
+
+
+
+# 六、 others
+
+## 异步可迭代器: async for
+
+在异步环境中（例如网络、数据库、文件IO），我们经常需要逐个异步地获取数据项，
+比如：
+
+- 从数据库逐条异步读取结果；
+
+- 从网络流（WebSocket、HTTP流）异步接收消息；
+
+- 从异步生成器中逐步产生结果。
+
+普通的 for 只能处理同步可迭代对象，不能 await。
+
+而 async for 能在每次迭代时等待异步操作完成，**只能在协程对象中使用**。
+
+
+| 特性    | 普通 `for`                         | `async for`                        |
+| ----- | -------------------------------- | ---------------------------------- |
+| 使用的协议 | 同步迭代协议 (`__iter__` / `__next__`) | 异步迭代协议 (`__aiter__` / `__anext__`) |
+| 每次取值  | 立即返回下一个元素                        | `await` 下一个元素（可能要等待异步IO）           |
+| 场景    | 遍历普通列表、字典等                       | 遍历异步生成器、异步流、异步IO结果                 |
+
+
+```csharp
+异步数据流 async for
+│
+├── async def generator():
+│       await IO操作
+│       yield 数据项
+│
+└── async for item in generator():
+        await 获取下一个 item
+```
+
+## 基本概念回顾
+
+- 可迭代对象（Iterable）：实现 ``__iter__()``，能返回一个迭代器（或实现 ``__getitem__`` 的旧式序列）。可以用 for x in obj: 遍历。
+
+- 迭代器（Iterator）：实现 ``__iter__()``（返回 self）和 ``__next__()（Python 3 中名为 __next__）``。``next(it) 会调用 it.__next__()``，当结束时抛 StopIteration。
+
+- 生成器（Generator）：**用 yield 的函数会返回生成器对象**。生成器是迭代器的一种特殊实现，维护自己的执行状态（局部变量、指令指针等）。
+
+yield：暂停函数并“产出”一个值，同时保持函数状态以便下次继续执行。和 return 不同，yield 会把函数变成生成器并可多次执行（每次返回一个值）。
+
+yield 不能在普通函数中使用：定义了 yield 的函数变成生成器。
+
+**不要把 yield 与 return 混用：return 结束生成器，yield 是产出点。**
+
+- yield 表达式的两种角色：
+
+1) ``yield <expr>：把 <expr> ``交给调用者，
+
+2) 同时 yield 本身是一个表达式，其值由下一次 ``send(value)`` 提供。
+
+```python
+def gen():
+    x = yield "first"
+    print("x:", x)
+    y = yield "second"
+    print("y:", y)
+
+g = gen()
+print(next(g))      # prints "first"
+print(g.send(10))   # prints "x: 10", prints "second"
+
+```
+
+``x = yield y``：调用者得到 y，生成器暂停；
+
+当外部 g.send(v) 恢复时，x 得到 v。
+
+## 生成器 vs 手写迭代器类（对比）
+```python
+def squares(n):
+    for i in range(n):
+        yield i*i
+```
+```python
+class Squares:
+    def __init__(self, n):
+        self.i = 0
+        self.n = n
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.i >= self.n:
+            raise StopIteration
+        val = self.i*self.i
+        self.i += 1
+        return val
+```
+yield 把函数变为生成器，生成器是迭代器的一种简洁实现。
+
+
+生成器对象有 .send(), .throw(), .close() 可以进行高级控制（协程式通信、异常注入、优雅关闭）。
+
+## 常见场景 / 使用理由（为什么用生成器）
+
+- 节省内存：生成器按需生成元素，适合处理大数据流或无限序列。
+
+- 流处理 / 管道：把多个生成器串联成处理流水线（类似 Unix pipe）。
+
+- 懒计算：避免一次性计算所有元素。
+
+- 异步流（结合 async for / async generators）：处理网络/IO 流。
+
+- 协程通信（用 send() 实现简单协程交互，已部分被 async/await 取代）。
+
+- 实现自定义迭代器：比写类更简单直接。
+
+对于异步代码，使用 async def / await / async for 是现代推荐方式；但生成器仍然在很多同步流处理场景中很有用。
+
+异步生成器（async def + yield）：
+```python
+async def async_gen():
+    await asyncio.sleep(1)
+    yield 1
+
+async def main():
+    async for x in async_gen():
+        print(x)
+```
+
+# 七、Problems
+
+## 确认你没有混用 sync 和 async 逻辑
 
 如果在 async 视图中用了阻塞的数据库查询（比如 MyModel.objects.all()），会触发警告或阻塞。
 
-异步环境下应使用：
+
+### 🧩 一、Django ORM 是同步的
+
+Django 自带的 ORM（`Model.objects.all()、filter()` 等）是同步阻塞的。
+这意味着即使你在 `async def` 视图中调用它，Django ORM 仍会阻塞事件循环：
+
+```python
+async def apps(request):
+    rows = Agent.objects.all()  # ❌ 同步操作，会卡住事件循环
+```
+
+所以，异步环境下应使用：
+
 ```python
 from asgiref.sync import sync_to_async
 
@@ -300,3 +668,70 @@ async def apps(request):
     data = await get_data()
     return JsonResponse({"data": data})
 ```
+
+sync_to_async 会把同步函数（这里是 ORM 查询）放入线程池（ThreadPoolExecutor）中执行，从而不会阻塞主事件循环（event loop）。
+
+#### ⚙️ 线程池来自哪里？
+
+sync_to_async 使用的是 asgiref 库（Django 自带依赖之一）。
+
+在 asgiref.sync 模块中，有一个默认的线程池：
+
+```python
+import concurrent.futures
+
+# 源码（简化）
+loop = asyncio.get_event_loop()
+executor = concurrent.futures.ThreadPoolExecutor()
+loop.set_default_executor(executor)
+```
+
+- Django（通过 asgiref）默认会使用一个 全局的 ThreadPoolExecutor，
+- 所有 sync_to_async() 调用都共用它。
+
+对于 Django 项目，可以在 asgi.py 中设置 max_workers；
+
+```python
+# asgi.py
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from django.core.asgi import get_asgi_application
+
+# 限制线程池大小 max_workers ，防止过多 ORM 查询阻塞
+executor = ThreadPoolExecutor(max_workers=16)
+loop = asyncio.get_event_loop()
+loop.set_default_executor(executor)
+
+application = get_asgi_application()
+```
+通常建议设置在：CPU 核心数 × 4 ~ 8 之间。
+
+### ⚡ 二、如果你使用 aiomysql，就不再使用 Django ORM
+
+aiomysql 是一个纯异步 MySQL 驱动，基于 asyncio，它不会用 Django 的 ORM。
+你必须用 SQL 语句 自己查询：
+
+```python
+import aiomysql
+from django.http import JsonResponse
+
+async def apps(request):
+    conn = await aiomysql.connect(
+        host='localhost', port=3306,
+        user='root', password='123456',
+        db='demo_db'
+    )
+    async with conn.cursor(aiomysql.DictCursor) as cur:
+        await cur.execute("SELECT * FROM agents;")
+        rows = await cur.fetchall()
+    conn.close()
+    return JsonResponse(rows, safe=False)
+```
+
+🟢 在这个例子中：
+
+- 数据库连接和查询都是异步的；
+
+- await cur.execute() 和 await cur.fetchall() 都不会阻塞事件循环；
+
+- 不需要再用 @sync_to_async 包裹。

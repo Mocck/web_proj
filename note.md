@@ -165,12 +165,19 @@ serializer.data
 - router 是 Vue Router 实例。
   ``app.use(router)``:作用是把路由功能安装到 Vue 应用上，让整个应用都能识别 ``<router-view /> 和 <router-link>``
 
+这一行 ``<router-view />`` 是一个「占位符」，可以自动显示当前路由对应的组件,它不会主动导入文件，但：
 
-安装后，``<router-view />`` 可以自动显示当前路由对应的组件。
+1) Vue Router* 在应用启动时会自动把这个组件接管；
 
-所以你的 App.vue 里虽然只有 ``<router-view />``，只要安装了路由插件，它就会渲染当前路由的组件。
+2) 根据当前 URL，比如 /about；
 
-- app.use() 是 Vue 提供的安装插件的方法。任何插件、库或者中间件都可以通过 app.use() 安装到整个应用实例。
+3) 去 router/index.js 的 routes 数组里找到匹配的路由；
+
+4) 然后自动渲染对应的组件到 <router-view /> 的位置。
+
+所以 *App.vue* 里虽然只有 ``<router-view />``，只要安装了路由插件，它就会渲染当前路由的组件。
+
+- app.use() 是 Vue 提供的安装插件的方法。任何插件、库或者中间件都可以通过 它安装到整个应用实例。
 ```js
 app.use(router)       // 安装路由
 app.use(store)        // 安装 Vuex / Pinia
