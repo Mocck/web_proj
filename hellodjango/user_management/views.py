@@ -450,9 +450,9 @@ def user_update(request):
     if new_email and not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', new_email):
         errors['email'] = '邮箱格式不正确'
 
-    # 手机号合法性检查（中国大陆示例，可按需求改）
-    if new_phone and not re.match(r'^1[3-9]\d{9}$', new_phone):
-        errors['phone_number'] = '手机号格式不正确'
+    # # 手机号合法性检查（中国大陆示例，可按需求改）
+    # if new_phone and not re.match(r'^1[3-9]\d{9}$', new_phone):
+    #     errors['phone_number'] = '手机号格式不正确'
 
     # 如果有错误，直接返回
     if errors:

@@ -1,0 +1,16 @@
+tokenizers==0.13.3
+transformers==4.33.2
+sentence-transformers==2.2.2
+huggingface-hub==0.15.1
+faiss-cpu
+langchain==0.1.0
+langchain-huggingface==1.0.1
+django-cors-headers
+django
+djangorestframework
+djangorestframework-simplejwt
+channels
+mysqlclient
+openai
+django-redis
+channels_redis

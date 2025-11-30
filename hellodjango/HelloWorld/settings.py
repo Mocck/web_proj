@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'graph',
     'workspace',
     'user_management',  # 新增用户管理应用
-    'channels',  # ✅ 加上这一行
+    'channels',
+    'rag_service',
 ]
 
 MIDDLEWARE = [
@@ -154,7 +155,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 如果你没有显式指定 @authentication_classes，都会用这个类去验证用户。
 '''
 REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': None ,#'api.common.handlers.custom_exception_handler',
+    'EXCEPTION_HANDLER': 'api.common.handlers.custom_exception_handler',
     # 使用自定义认证类：优先从 Authorization header，再从 Cookie('access') 获取 JWT
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'user_management.authentication.CookieOrHeaderJWTAuthentication',
@@ -187,7 +188,7 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('redis://:redis123456@127.0.0.1:6379/0', 6379)],  # 你的 Redis 地址
+            "hosts": ["redis://:redis123456@localhost:6379/0"],
         },
     },
 }

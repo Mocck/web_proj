@@ -4,7 +4,7 @@ from django.http import Http404
 from django.core.exceptions import BadRequest
 from rest_framework.exceptions import ValidationError
 from .response import ApiResponse
-import traceback
+from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 import logging
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,11 @@ def custom_exception_handler(exc, context):
         request = context.get("request")
         path = request.path if request else ""
         return Response(ApiResponse.fail(40400, f"资源不存在: {path}"), status=404)
+    
+    if isinstance(exc, (TokenError, InvalidToken)):
+        # JWT 过期 / 无效
+        return Response(ApiResponse.fail(40100, 'Token 已过期或无效'), status=401)
+
     # 其他异常
     response = exception_handler(exc, context)
     if response is not None:

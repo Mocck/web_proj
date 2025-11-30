@@ -28,7 +28,7 @@ urlpatterns = [
 
     # 统一把 /api/ 前缀交给 api 应用的路由去处理
     path('api/', include('api.urls')),
-
+    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # 全局 404 处理

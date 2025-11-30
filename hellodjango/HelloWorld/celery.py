@@ -19,6 +19,6 @@ from celery.schedules import crontab
 app.conf.beat_schedule = {
     'unlock-locked-users-every-30-mins': {
         'task': 'user_management.tasks.unlock_locked_users',
-        'schedule': crontab(minute='*/30'),  # 每 30 分钟
+        'schedule': crontab(minute='*/60'),  # 每 60 分钟
     },
 }

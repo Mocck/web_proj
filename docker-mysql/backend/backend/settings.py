@@ -1,25 +1,19 @@
 from pathlib import Path
 from datetime import timedelta
+import os
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-secret-key-for-dev")  # 默认值仅用于开发
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-pklu9clsyvbbc0bylcd8c8b=8j5z655@3f0x68a8bz5v_(sd7%'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
 
 # CORS_ALLOW_ALL_ORIGINS = True   ,跨域相关设置
 CORS_ALLOWED_ORIGINS = ['http://localhost:5173']
 # ✅ 允许携带 cookie
 CORS_ALLOW_CREDENTIALS = True
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "0.0.0.0"]
 
 
 # Application definition
@@ -38,7 +32,7 @@ INSTALLED_APPS = [
     'agents',
     'graph',
     'workspace',
-    'user_management',  # 新增用户管理应用
+    'user_management',
 ]
 
 MIDDLEWARE = [
@@ -52,7 +46,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'HelloWorld.urls'
+ROOT_URLCONF = 'backend.urls'
 
 TEMPLATES = [
     {
@@ -69,27 +63,37 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'HelloWorld.wsgi.application'
+WSGI_APPLICATION = 'backend.wsgi.application'
 
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+import os
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'demo_db',
-        'USER': 'demo_user',
-        'PASSWORD': 'demo_pass_123',
-        'HOST': 'mysql',   # 来自 docker-compose 服务名
+        'NAME': os.environ.get('MYSQL_DATABASE'),
+        'USER': os.environ.get('MYSQL_USER'),
+        'PASSWORD': os.environ.get('MYSQL_ROOT_PASSWORD'),
+        'HOST': os.environ.get('MYSQL_HOST'),
         'PORT': '3306',
+        'OPTIONS': {
+            'auth_plugin': 'mysql_native_password',
+            'ssl': {'ssl_disabled': True}, 
+        },
     }
 }
+
+REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD")
+REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
+REDIS_PORT = os.environ.get("REDIS_PORT", 6379)
 
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://:redis123456@redis:6379/0',
+        'LOCATION': f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0",
         'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient'}
     }
 }
@@ -149,7 +153,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 如果你没有显式指定 @authentication_classes，都会用这个类去验证用户。
 '''
 REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': None ,#'api.common.handlers.custom_exception_handler',
+    'EXCEPTION_HANDLER':'api.common.handlers.custom_exception_handler', #'EXCEPTION_HANDLER': None ,'EXCEPTION_HANDLER':'api.common.handlers.custom_exception_handler',
     # 使用自定义认证类：优先从 Authorization header，再从 Cookie('access') 获取 JWT
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'user_management.authentication.CookieOrHeaderJWTAuthentication',

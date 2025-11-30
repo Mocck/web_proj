@@ -1,0 +1,115 @@
+services:
+  mysql:
+    container_name: ${PROJECT_NAME:-chat-agent}-mysql
+    image: mysql:8
+    restart: unless-stopped
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-demo_db}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-zwd20011020}
+      TZ: ${TZ:-Asia/Shanghai}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./../database/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  phpmyadmin:
+    container_name: ${PROJECT_NAME:-chat-agent}-phpmyadmin
+    image: phpmyadmin/phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+      UPLOAD_LIMIT: 50M
+      TZ: ${TZ:-Asia/Shanghai}
+    networks:
+      - app-network
+    depends_on:
+      - mysql
+  
+  redis:
+    image: redis:7-alpine
+    container_name: redis-demo
+    command: redis-server --appendonly yes --requirepass redis20011020
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    entrypoint: ["/app/entrypoint.sh"]
+    container_name: backend
+    command: python manage.py runserver 0.0.0.0:8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../backend:/app
+    depends_on:
+      - mysql
+      - redis
+    env_file:
+      - .env
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  celery:
+    build: ../backend
+    command: >
+      sh -c "celery -A backend worker -l info &
+             celery -A backend beat -l info"
+    depends_on:
+      - redis
+      - backend
+    networks:
+      - app-network
+
+  web-admin:
+    container_name: ${PROJECT_NAME:-chat-agent}-web-admin
+    build:
+      context: ../web-admin
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: ${NODE_ENV:-production}
+    image: ${PROJECT_NAME:-chat-agent}-web-admin:latest
+    restart: unless-stopped
+    ports:
+      - "${WEB_ADMIN_PORT:-80}:80"
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+    networks:
+      - app-network
+    depends_on:
+      - backend
+
+networks:
+  app-network:
+    driver: bridge
+    name: ${PROJECT_NAME:-chat-agent}-network
+
+volumes:
+  mysql-data:
+    driver: local
+    name: ${PROJECT_NAME:-chat-agent}-mysql-data
+  redis_data:
+    driver: local

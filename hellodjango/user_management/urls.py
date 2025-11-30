@@ -22,9 +22,9 @@ urlpatterns = [
     # 用户个人管理：查看
     path('me/', views.user_detail, name='user_detail'),
     # 用户个人管理：更新
-    path('me/update', views.user_update, name='user_update'),
+    path('me/update/', views.user_update, name='user_update'),
     # 用户个人管理：删除
-    path('me/delete', views.user_delete, name='user_delete'),
+    path('me/delete/', views.user_delete, name='user_delete'),
     # 修改密码
     path('password/', views.change_password, name='chage_password'),
 
